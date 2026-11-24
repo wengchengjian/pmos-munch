@@ -48,13 +48,12 @@ jobs:
         run: |
           set -eo pipefail
           . pmbootstrap/.venv/bin/activate
-          echo "=== pmbootstrap init --help ==="
-          pmbootstrap init --help 2>&1 | head -40 || true
-          echo "=== pmbootstrap install --help ==="
-          pmbootstrap install --help 2>&1 | head -60 || true
-          echo "=== set config ==="
-          pmbootstrap -p "$GITHUB_WORKSPACE/pmaports" config aports "$GITHUB_WORKSPACE/pmaports"
-          pmbootstrap -p "$GITHUB_WORKSPACE/pmaports" config device xiaomi-munch
+          echo "=== generate default config non-interactively ==="
+          yes "" | pmbootstrap -y init 2>&1 | tail -25 || true
+          echo "=== config dir ==="
+          find ~/.config -name "*pmbootstrap*" -o -name "*.cfg" 2>/dev/null | head -5
+          echo "=== override device/ui ==="
+          pmbootstrap config device xiaomi-munch
           pmbootstrap config ui none
           echo "=== resulting config ==="
           pmbootstrap config device
@@ -65,7 +64,7 @@ jobs:
         run: |
           set -eo pipefail
           . pmbootstrap/.venv/bin/activate
-          pmbootstrap install --password 147147 2>&1 | tail -80
+          pmbootstrap install --password 147147 2>&1 | tail -100
 
       - name: Export and collect
         if: always()
