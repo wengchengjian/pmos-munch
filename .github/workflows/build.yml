@@ -46,22 +46,26 @@ jobs:
 
       - name: Configure pmbootstrap
         run: |
-          set -e
-          cd pmbootstrap
-          . .venv/bin/activate
-          pmbootstrap -q init --aports="$GITHUB_WORKSPACE/pmaports" \
-              --device=xiaomi-munch --ui=none || true
+          set -eo pipefail
+          . pmbootstrap/.venv/bin/activate
+          echo "=== pmbootstrap init --help ==="
+          pmbootstrap init --help 2>&1 | head -40 || true
+          echo "=== pmbootstrap install --help ==="
+          pmbootstrap install --help 2>&1 | head -60 || true
+          echo "=== set config ==="
+          pmbootstrap -p "$GITHUB_WORKSPACE/pmaports" config aports "$GITHUB_WORKSPACE/pmaports"
+          pmbootstrap -p "$GITHUB_WORKSPACE/pmaports" config device xiaomi-munch
+          pmbootstrap config ui none
           echo "=== resulting config ==="
-          pmbootstrap config device || true
-          pmbootstrap config ui || true
-          pmbootstrap config aports || true
+          pmbootstrap config device
+          pmbootstrap config ui
+          pmbootstrap config aports
 
       - name: Build image
         run: |
-          set -e
-          cd pmbootstrap
-          . .venv/bin/activate
-          pmbootstrap -q install 2>&1 | tail -60
+          set -eo pipefail
+          . pmbootstrap/.venv/bin/activate
+          pmbootstrap install --password 147147 2>&1 | tail -80
 
       - name: Export and collect
         if: always()
