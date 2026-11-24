@@ -1,0 +1,94 @@
+name: build-pmos-munch
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install host deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip python3-venv git openssl \
+            unzip file binutils
+
+      - name: Clone pmbootstrap and pmaports
+        run: |
+          set -e
+          git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
+          git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git
+          echo "pmbootstrap: $(git -C pmbootstrap rev-parse --short HEAD)"
+          echo "pmaports:   $(git -C pmaports rev-parse --short HEAD)"
+
+      - name: Drop in munch device packages
+        run: |
+          set -e
+          cp -r device-xiaomi-munch   pmaports/device/testing/
+          cp -r firmware-xiaomi-munch pmaports/device/testing/
+          ls pmaports/device/testing/ | grep munch
+
+      - name: Install pmbootstrap
+        run: |
+          set -e
+          cd pmbootstrap
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install -e .
+          pmbootstrap --version
+
+      - name: Configure pmbootstrap
+        run: |
+          set -e
+          cd pmbootstrap
+          . .venv/bin/activate
+          pmbootstrap -q init --aports="$GITHUB_WORKSPACE/pmaports" \
+              --device=xiaomi-munch --ui=none || true
+          echo "=== resulting config ==="
+          pmbootstrap config device || true
+          pmbootstrap config ui || true
+          pmbootstrap config aports || true
+
+      - name: Build image
+        run: |
+          set -e
+          cd pmbootstrap
+          . .venv/bin/activate
+          pmbootstrap -q install 2>&1 | tail -60
+
+      - name: Export and collect
+        if: always()
+        run: |
+          set -e
+          cd pmbootstrap
+          . .venv/bin/activate
+          pmbootstrap export || true
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cp /tmp/postmarketOS-export/* "$GITHUB_WORKSPACE/out/" 2>/dev/null || true
+          ls -la "$GITHUB_WORKSPACE/out/" || true
+
+      - name: Upload images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmos-munch-images
+          path: out/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            ~/.local/var/pmbootstrap/log.txt
+          retention-days: 7
+          if-no-files-found: ignore
