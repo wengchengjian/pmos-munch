@@ -273,3 +273,58 @@ initramfs hook 挂 `/dev/sda34`(userdata, FAT32) → `losetup /rootfs.img` → e
 - 新增 `README.md`（成果索引/架构/复现）、`scripts/README.md`（脚本索引）、`artifacts/CHECKSUMS.txt`
 - `wsl-export.sh` 去掉 `rm -rf out`（避免误删交付物）
 - 以后新增脚本请放进 `scripts/` 对应子目录，不要再堆在根目录
+
+---
+
+## 2026-11-25 下午：userdata 扩容到 223 GiB ✅
+
+**目标**：把 sda34（224.8 GiB）里未使用的 ~223 GiB 用起来，作为 rootfs。
+
+### 方案（不改 GPT、不碰其它分区）
+
+sda34 内部切两段，FAT32 启动区保持原样：
+
+```
+sda34 224.8 GiB
+  0        .. 1536 MiB   FAT32 "PMOSBOOT"（UEFI/GRUB/内核/initramfs/旧 rootfs.img）
+  1536 MiB .. end        ext4 "pmOS_root" 223 GiB（UUID 复用 687be8df-…，不新增分区项）
+```
+
+- 手机端用 `losetup -o 1610612736 /dev/loopX /dev/sda34` 映射大段（已挂载的 sda34 也可以，
+  实测可行）。注意参数顺序是 **loopdev 在前、file 在后**，写反会 `Invalid argument`。
+- `mkfs.ext4 -m 0 -U 687be8df-… -E lazy_itable_init=1,lazy_journal_init=1`
+- `rsync -aHAX --numeric-ids --one-file-system` 把当前 rootfs 复制进新 fs（约 768MB）
+- 新 initramfs 的 `hooks/50-loop-root.sh`：
+  1. 找 PARTLABEL=userdata；
+  2. `losetup -o 1536MiB` 映射大 ext4；
+  3. `blkid` 校验 UUID + 只读挂载测试；
+  4. 成功则保留 loop 给 pmOS 按 UUID 找根；
+  5. 任何一步失败 → 回退到挂 FAT + `losetup /rootfs.img`（旧 1GB 根，UUID 相同）。
+- 旧 initramfs 保留在 FAT：`/boot/boot/initramfs-old-rootfsimg.gz`。
+
+### 验证结果
+
+```
+/dev/loop0  218.7G  已用 784M  可用 218.0G  /
+/dev/sda34  1.5G    /boot (FAT)
+e2fsck -fn: clean, 8255 files
+dmesg: loop-root: offset loop /dev/loop0 uuid=687be8df… big rootfs OK
+services: panel-blank / wpa_supplicant-wlan0 / wlan0-dhcp / sshd 全部 active
+WiFi: 192.168.0.100（DHCP 请求 .100 成功；此前是 .103）
+外网/网关 ping 正常；battery 95% Charging
+```
+
+### 备份（PC）
+
+- `out/backup-20261125-133425/`：扩容前 1.5GiB 启动区 + initramfs/grub/vmlinuz/dtb + /etc
+- `out/pmos-fat-userdata-grow.img`：扩容后启动 FAT（1.5GiB）
+- `out/rootfs-grow-20261125-135002.tar.gz`：扩容后 rootfs（约 437MB）
+- 校验和见 `artifacts/CHECKSUMS.txt`
+
+### 警告
+
+- **不要再用 `flash-fast.sh` 刷旧的 `out/pmos-fat-userdata.img`**：那会把 userdata 截回
+  1.5GiB 旧布局，大 ext4 虽然物理还在但启动 hook 会找不到/被覆盖。
+- 恢复顺序：优先 `out/pmos-fat-userdata-grow.img`；若必须整包重刷，刷完后要重做扩容
+  （`scripts/ops/wsl-grow-rootfs.sh` + `scripts/build/wsl-build-grow-initramfs.sh`）。
+- 大 ext4 不是分区，GPT 里仍是 sda34；换系统/重刷 userdata 会丢，需要重新迁移。

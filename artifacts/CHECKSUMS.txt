@@ -1,16 +1,25 @@
-# pmos-munch 关键产物校验（2026-11-25）
-# 注意：大镜像不进 git，仅记录 sha256 以便核对
+# pmos-munch 关键产物校验（2026-11-25 扩容后）
+# 大镜像不进 git，仅记录 sha256 以便核对
 
-## 可刷写镜像
-2cb7bfd9bd1dc2e3203c022337be85f58f5e15b7f5552d2001813fa936e0d6ee *out/pmos-fat-userdata.img
+## 当前启动 FAT（1.5GiB，含偏移 loop initramfs）
+5c23aef66f8e816c12248afd6bd8a08639b502ac5b5ed5a48fd92af75a683cde  out/pmos-fat-userdata-grow.img
+
+## 当前 initramfs（自动挂 offset ext4，失败回退 rootfs.img）
+2400e5fa9122335a97e427ba0482198cd6d5b0ccd25b13160679e90deed689b5  work/initramfs-grow.gz
+
+## 当前根文件系统备份（tar.gz，约 437MB）
+cd6802cb489ca113ec3705e26337a342757fe5f3e32b7dbb21fa2aa28cb8c5e4  out/rootfs-grow-20261125-135002.tar.gz
+
+## 历史启动 FAT（10:44 快照，旧 1GB rootfs）
+2cb7bfd9bd1dc2e3203c022337be85f58f5e15b7f5552d2001813fa936e0d6ee  out/pmos-fat-userdata.img
 
 ## 构建输入
-b5ba9abe3e5c0183e3848f288ae79d5bd6b848d95978f7ff888939ec35bb1625 *out/root-debug.img
-4df6acee8aa8a145425c72cb92c65505f93acd2e132e3eb6e608b93011089e54 *out/pmos-uefi-userdata.img
+b5ba9abe3e5c0183e3848f288ae79d5bd6b848d95978f7ff888939ec35bb1625  out/root-debug.img
+4df6acee8aa8a145425c72cb92c65505f93acd2e132e3eb6e608b93011089e54  out/pmos-uefi-userdata.img
 
-## FAT 镜像内文件（work/fatbuild/）
-8be758a211fae1dc36f0ab439770ce30bff41128649ec81790536ccb1b4bcbef *work/fatbuild/vmlinuz
-4a87c1be240bf188d3780bb090e04a659f61de69302f45f1716c4007e4b7afd8 *work/fatbuild/initramfs-fat.gz
-4d87b67b2a814a0e3798d6e972cbca8f6f0d75393d5b2a1e8ea4d664371ac3fb *work/fatbuild/rootfs.img
-0555581b51ac9ce23c7d936d442aec77ed8a253d8d0ebb087c76aef6a9e60897 *work/fatbuild/BOOTAA64.EFI
-2870896c20fab6f321cb626bb1301b1aeac378280a6f202c42b4d07378c57b87 *work/fatbuild/dtb.bin
+## 旧 FAT 镜像内文件（work/fatbuild/）
+8be758a211fae1dc36f0ab439770ce30bff41128649ec81790536ccb1b4bcbef  work/fatbuild/vmlinuz
+4a87c1be240bf188d3780bb090e04a659f61de69302f45f1716c4007e4b7afd8  work/fatbuild/initramfs-fat.gz
+4d87b67b2a814a0e3798d6e972cbca8f6f0d75393d5b2a1e8ea4d664371ac3fb  work/fatbuild/rootfs.img
+0555581b51ac9ce23c7d936d442aec77ed8a253d8d0ebb087c76aef6a9e60897  work/fatbuild/BOOTAA64.EFI
+2870896c20fab6f321cb626bb1301b1aeac378280a6f202c42b4d07378c57b87  work/fatbuild/dtb.bin

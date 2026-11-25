@@ -12,12 +12,13 @@
 |---|---|
 | 启动链 | ✅ UEFI(edk2-msm-munch) → GRUB → 主线 pmOS 7.2.0 + 自建 headless dtb |
 | 系统 | ✅ postmarketOS edge / systemd / hostname `munch` |
-| 网络 | ✅ WiFi `wlan0`（ath11k/QCA6390），**192.168.0.103**，MAC 已固定 `02:00:7b:15:30:a6` |
-| SSH | ✅ `ssh user@192.168.0.103`（局域网）；USB 网络 `ssh user@172.16.42.1` |
+| 网络 | ✅ WiFi `wlan0`（ath11k/QCA6390），**192.168.0.100**（DHCP 请求 .100，偶尔 .103），MAC 已固定 `02:00:7b:15:30:a6` |
+| SSH | ✅ `ssh user@192.168.0.100`（局域网）；USB 网络 `ssh user@172.16.42.1` |
 | 屏幕 | ✅ 物理黑屏（`panel-blank.service` 拉低面板 reset GPIO12） |
 | 电量 | ✅ `/usr/local/bin/battery`（qcom-battery） |
-| 包管理 | ✅ apk 数据库已修复；阿里云 Alpine edge 镜像；已装 tmux 等基础包 |
-| rootfs 空间 | ⚠️ 约 170MB 空闲（1041MiB ext4），装大包前先扩容 |
+| 包管理 | ✅ apk 数据库已修复；阿里云 Alpine edge 镜像；已装 tmux/rsync 等基础包 |
+| 存储 | ✅ userdata 224.8 GiB：1.5 GiB FAT 启动区 + **223 GiB ext4 根分区** |
+| rootfs 空间 | ✅ 218.7 GiB 可用（已用约 0.8 GiB） |
 
 **红线（不可违反）**：绝不刷 `dtbo` / `bootloader` / `xbl` / `abl` / `tz` / `modem` / `super`；slot a Android 不可动；唯一允许的数据损失是 `userdata`（已确认接受）。
 
@@ -31,14 +32,30 @@ ABL (slot b)
                  ├─ devicetree /boot/dtb.bin     （我们的 headless dtb）
                  ├─ linux       /boot/vmlinuz-pmos（7.2.0 主线，49MB Image）
                  └─ initrd      /boot/initramfs.gz
-                      └─ hook 50-loop-root.sh：
-                           FAT (PARTLABEL=userdata) → losetup /rootfs.img → ext4
+                      └─ hook 50-loop-root.sh（big-root 模式）：
+                           losetup -o 1536MiB /dev/sda34  ← 跳过 FAT，直接映射后面的大 ext4
                              └─ pmOS 按 UUID 687be8df-… 找根 → systemd → sshd
+                          失败自动回退：挂 FAT → losetup /rootfs.img（旧 1GB 根）
 ```
 
 关键前提：**发布版 UEFI 固件没有 ext2/4 驱动，只认 FAT32/NTFS**；且 UFS 逻辑扇区是 4096，
 所以 FAT32 必须用 `mkfs.vfat -S 4096` 创建。BDS 会自动把 `\EFI\Boot\bootaa64.efi` 插到
 BootOrder 首位（`PlatformBm.c` 的 AfterConsole 逻辑）。
+
+## 存储布局（2026-11-25 扩容）
+
+`/dev/sda`（UFS）共 236 GiB，`/dev/sda34`（userdata）224.8 GiB。**没有改 GPT**，
+只把 userdata 内部切成两段：
+
+```
+sda34  224.8 GiB
+  0        .. 1536 MiB   FAT32 "PMOSBOOT"（UEFI/GRUB/内核/initramfs/旧 rootfs.img）
+  1536 MiB .. end        ext4 "pmOS_root"（223 GiB，当前根文件系统，UUID 复用 687be8df-…）
+```
+
+启动时 initramfs 用 `losetup -o 1610612736 /dev/loop0 /dev/sda34` 把第二段映射成块设备，
+pmOS 照旧按 UUID 找根。这样绕开了 FAT32 单文件 4 GiB 的限制，也不需要动分区表；
+旧的 1 GiB `rootfs.img` 保留在 FAT 上作为自动回退。
 
 ## 成果目录
 
@@ -52,9 +69,12 @@ artifacts/                    小体积关键产物（可进 git）
   CHECKSUMS.txt                 大镜像/关键文件的 sha256
 
 out/                          大镜像（不进 git）
-  pmos-fat-userdata.img         ★ 当前可刷写交付物（1536MiB FAT32）
-  root-debug.img                rootfs 源（ext4 1041MiB，UUID 687be8df）
+  pmos-fat-userdata-grow.img   ★ 当前启动 FAT（1.5GiB，含偏移 loop initramfs）
+  rootfs-grow-*.tar.gz         当前根文件系统备份（约 437MB）
+  pmos-fat-userdata.img        扩容前快照（10:44，旧 1GB rootfs，可回刷）
+  root-debug.img               旧 rootfs 源（ext4 1041MiB，UUID 687be8df）
   pmos-uefi-userdata.img        早期 ext4 UEFI 布局（构建输入）
+  backup-20261125-133425/      扩容前 boot 文件 + 配置备份
   dtbs/                         解包 dtb 备查
   dtbo/                         K40S 原厂 dtbo 的 27 个 overlay（已反编译）
   wifi-pkgs/                    离线 WiFi 二进制包（apk 坏掉时的救急方案）
@@ -71,7 +91,7 @@ scripts/
   verify/   QEMU+AAVMF、proot+qemu-user、离线校验
   ops/      WiFi 恢复、apk 修复、MAC 固定等手机侧运维
 
-packages/（本地 `repo/`）       pmaports 包源码（device/firmware/linux-munch，成果）
+repo/                         pmaports 包源码（device/firmware/linux-munch，成果）
 units/                        手机侧 systemd 单元（panel-blank、battery）
 tools/                        手机侧脚本与 gpio_hold 源码/二进制
 cmds/                         手机侧一次性操作脚本
@@ -107,6 +127,19 @@ sudo bash scripts/verify/offline-verify.sh
 bash scripts/verify/qemu-uefi-fat-test.sh
 ```
 
+### 扩容 rootfs（已执行，供以后参考）
+
+```bash
+# 手机端：在 userdata 的 1.5GiB 偏移建 ext4，并用 rsync 把当前 rootfs 复制进去
+sudo sh scripts/ops/wsl-grow-rootfs.sh        # 脚本内会 losetup -o 1610612736
+# PC 端：用带 big-root hook 的 initramfs 替换 FAT 上的 /boot/initramfs.gz
+sudo bash scripts/build/wsl-build-grow-initramfs.sh
+# 替换后重启；hook 失败会自动回退到旧 rootfs.img
+```
+
+扩容后不要再用 `flash-fast.sh` 刷 `out/pmos-fat-userdata.img`（那会把 userdata 截回 1.5GiB
+的旧布局）；恢复请用 `out/pmos-fat-userdata-grow.img` 或直接刷整个 userdata 后重做扩容。
+
 刷机（手机进 fastboot，**先确认 current-slot=a**）：
 
 ```bash
@@ -130,6 +163,11 @@ bash scripts/deploy/flash-fast.sh
 6. **WiFi 工具可离线部署**：apk 坏掉时用 `out/wifi-pkgs/wifi-bin.tar.gz` 解到 `/usr/local/wifi`，
    `LD_LIBRARY_PATH=/usr/local/wifi/lib` 运行。
 7. **WSL 脚本**：`wsl.exe bash -c` 会吞 `$VAR`，一律用脚本文件；WSL `/tmp` 会丢，产物放 F:。
+8. **FAT32 单文件上限 4 GiB**：rootfs 想要 >4 GiB 不能继续放在 FAT 里的 `rootfs.img`。
+   办法是在 userdata 的未用空间做 **offset ext4**（见上），不用改 GPT、不碰其它分区。
+9. **`losetup` 参数顺序**：`losetup -o OFFSET <loopdev> <file>`（loopdev 在前）；写反会报
+   `Invalid argument`。offset 必须 4096 对齐，且分区正在被挂载时也能这样映射。
+10. **扩容后 IP 可能变**：DHCP 请求 `192.168.0.100`，用 `ip -4 addr show wlan0` 确认。
 
 ## 参考
 
