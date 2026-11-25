@@ -58,6 +58,21 @@
 | `wsl-apk-rebuild.sh` | ★ apk 数据库重建（移走损坏 installed，重建 world） |
 | `wsl-apk-tools1.sh` | 批量安装常用工具/库（待执行） |
 | `wsl-pin-mac-reboot.sh` | 固定 wlan0 MAC 并重启网络 |
+| `wsl-disk-mem.sh` | 查看块设备/分区/内存/CPU（诊断用） |
+| `wsl-pre-grow-check.sh` | 扩容前检查工具、FAT 尺寸、fstab |
+
+## grow/ — userdata 扩容（2026-11-25 已执行）
+
+| 脚本 | 作用 |
+|---|---|
+| `wsl-backup-before-grow.sh` | 备份原 1.5GiB 启动区 + initramfs/grub/内核/配置 |
+| `wsl-install-rsync.sh` | 手机上安装 rsync |
+| `wsl-grow-rootfs.sh` | ★ 在 sda34 的 1536MiB 偏移建 223GiB ext4 并 rsync 迁移 rootfs |
+| `wsl-test-grow-hook.sh` | 在运行中的系统上实测新 hook（attach/mount/日志） |
+| `wsl-install-grow-initramfs.sh` | e2fsck 检查 + 上传新 initramfs（旧版保留回退） |
+| `wsl-reboot-verify-grow.sh` | 重启并验证根分区/服务/电量 |
+| `wsl-backup-after-grow.sh` | 备份新启动 FAT + 当前 rootfs tar.gz |
+| `wsl-verify-net.sh` | 验证 WiFi SSH / 网关 / 外网 |
 
 ## 长尾脚本
 
