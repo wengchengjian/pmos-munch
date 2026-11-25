@@ -56,7 +56,9 @@
 | `wsl-install-wifi-tools.sh` | 反向 SSH 隧道 + apk 安装 iw/wpa_supplicant（历史） |
 | `wsl-apk-repair1.sh` | 配置阿里云镜像源 + 尝试修复 apk 数据库 |
 | `wsl-apk-rebuild.sh` | ★ apk 数据库重建（移走损坏 installed，重建 world） |
-| `wsl-apk-tools1.sh` | 批量安装常用工具/库（待执行） |
+| `wsl-apk-tools1.sh` | 第一批常用工具/库（110 包，已执行） |
+| `wsl-apk-tools2.sh` | 第二批：git / python3+pip / gcc / make / vim / htop / strace 等（已执行） |
+| `wsl-verify-tools.sh` | 验证工具、版本、SSH 登录、服务状态 |
 | `wsl-pin-mac-reboot.sh` | 固定 wlan0 MAC 并重启网络 |
 | `wsl-disk-mem.sh` | 查看块设备/分区/内存/CPU（诊断用） |
 | `wsl-pre-grow-check.sh` | 扩容前检查工具、FAT 尺寸、fstab |

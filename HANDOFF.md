@@ -329,3 +329,22 @@ WiFi: 192.168.0.100（DHCP 请求 .100 成功；此前是 .103）
 - 恢复顺序：优先 `out/pmos-fat-userdata-grow.img`；若必须整包重刷，刷完后要重做扩容
   （`scripts/ops/wsl-grow-rootfs.sh` + `scripts/build/wsl-build-grow-initramfs.sh`）。
 - 大 ext4 不是分区，GPT 里仍是 sda34；换系统/重刷 userdata 会丢，需要重新迁移。
+
+---
+
+## 2026-11-25 下午：常用工具安装完成 ✅
+
+扩容后 rootfs 有 218GB，执行两批 apk 安装（无 `--force-overwrite`，标准事务）：
+
+- 第一批 110 个包：bash、coreutils、findutils、grep/sed/gawk/diffutils、file/less、
+  procps-ng、psmisc、util-linux、tar/xz/zstd、tree/jq、curl/wget/rsync、openssh-client、
+  ca-certificates、bind-tools、iproute2/net-tools/netcat-openbsd/socat、sqlite-libs、
+  libffi/libstdc++/zlib/readline/libxml2
+- 第二批：git 2.56.1、python3 3.14.10 + pip 26.2.1、gcc 15.2.0、make 4.4.1、musl-dev、
+  pkgconf、vim 9.2、nano、htop 3.5.3、strace、lsof、ncdu、unzip/zip、tcpdump 4.99.7、
+  sqlite3、openssl 3.5.9、bash-completion
+
+结果：`df -h /` = 219G 总 / 1.2G 已用 / 218G 可用；新 SSH 登录正常（PAM 未被破坏）；
+panel-blank / wpa_supplicant-wlan0 / wlan0-dhcp / sshd 全部 active；仅 getty@tty1 和
+serial-getty 失败（无 VT/串口，预期）。脚本：`scripts/ops/wsl-apk-tools1.sh`、
+`wsl-apk-tools2.sh`、`wsl-verify-tools.sh`。

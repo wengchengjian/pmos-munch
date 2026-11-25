@@ -16,7 +16,7 @@
 | SSH | ✅ `ssh user@192.168.0.100`（局域网）；USB 网络 `ssh user@172.16.42.1` |
 | 屏幕 | ✅ 物理黑屏（`panel-blank.service` 拉低面板 reset GPIO12） |
 | 电量 | ✅ `/usr/local/bin/battery`（qcom-battery） |
-| 包管理 | ✅ apk 数据库已修复；阿里云 Alpine edge 镜像；已装 tmux/rsync 等基础包 |
+| 包管理 | ✅ apk 数据库已修复；阿里云 Alpine edge 镜像；已装 200+ 包（bash/coreutils/git/python3/gcc/vim/htop/tmux/rsync…） |
 | 存储 | ✅ userdata 224.8 GiB：1.5 GiB FAT 启动区 + **223 GiB ext4 根分区** |
 | rootfs 空间 | ✅ 218.7 GiB 可用（已用约 0.8 GiB） |
 
