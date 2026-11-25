@@ -2,8 +2,6 @@ name: build-pmos-munch
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 jobs:
   build:
@@ -30,8 +28,7 @@ jobs:
       - name: Drop in munch device packages
         run: |
           set -e
-          cp -r device-xiaomi-munch   pmaports/device/testing/
-          cp -r firmware-xiaomi-munch pmaports/device/testing/
+          cp -r packages/* pmaports/device/testing/
           ls pmaports/device/testing/ | grep munch
 
       - name: Install pmbootstrap
@@ -64,7 +61,7 @@ jobs:
         run: |
           set -eo pipefail
           . pmbootstrap/.venv/bin/activate
-          pmbootstrap install --password 147147 2>&1 | tail -100
+          pmbootstrap install --password CHANGE_ME_PASSWORD 2>&1 | tail -100
 
       - name: Export and collect
         if: always()

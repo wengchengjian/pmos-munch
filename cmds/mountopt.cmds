@@ -1,0 +1,15 @@
+echo "=== device logical sector ==="
+cat /sys/block/sda/queue/logical_block_size 2>/dev/null
+cat /sys/block/sda/queue/physical_block_size 2>/dev/null
+echo "=== try blocksize=4096 mount option ==="
+mkdir -p /mnt/vt1
+mount -t vfat -o rw,blocksize=4096 /dev/sda34 /mnt/vt1
+echo "rc_blocksize=$?"
+ls /mnt/vt1 2>/dev/null | head -5
+umount /mnt/vt1 2>/dev/null
+echo "=== try vfat generic ==="
+mount -t vfat /dev/sda34 /mnt/vt1
+echo "rc_plain=$?"
+umount /mnt/vt1 2>/dev/null
+echo "=== dmesg tail ==="
+dmesg | tail -6

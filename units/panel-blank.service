@@ -1,0 +1,12 @@
+[Unit]
+Description=Blank OLED panel (hold gpio12 reset low)
+DefaultDependencies=no
+After=sysinit.target
+
+[Service]
+ExecStart=/usr/local/bin/gpio_hold 3 12 0 2147483647
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=sysinit.target

@@ -1,0 +1,15 @@
+# 大文件 / 构建目录（不进仓库）
+out/
+work/
+logs/
+archive/
+edk2/
+los-ref/
+los-src/
+pmaports-alioth/
+pmaports-munch/
+*.img
+*.apk
+*.tar.gz
+*.zip
+tools/gpio_hold

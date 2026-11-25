@@ -1,0 +1,11 @@
+#!/bin/sh
+B=/sys/class/power_supply/qcom-battery
+C=$(cat $B/capacity 2>/dev/null)
+S=$(cat $B/status 2>/dev/null)
+V=$(cat $B/voltage_now 2>/dev/null)
+I=$(cat $B/current_now 2>/dev/null)
+T=$(cat $B/temp 2>/dev/null)
+[ -n "$V" ] && V=$((V / 1000)) || V="?"
+[ -n "$I" ] && I=$((I / 1000)) || I="?"
+[ -n "$T" ] && T=$((T / 10)) || T="?"
+echo "battery ${C}% ${S} ${V}mV ${I}mA ${T}C"

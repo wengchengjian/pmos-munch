@@ -1,0 +1,20 @@
+echo "=== pid1 ==="
+cat /proc/1/comm
+echo "=== systemd state ==="
+systemctl is-system-running 2>&1
+echo "=== failed units ==="
+systemctl --failed --no-pager 2>&1 | head -12
+echo "=== listen ports ==="
+ss -ltn 2>/dev/null | head -15
+echo "=== sshd status ==="
+systemctl status sshd --no-pager 2>&1 | head -10
+echo "=== telnetd status ==="
+systemctl status debug-telnetd --no-pager 2>&1 | head -8
+echo "=== root mount ==="
+mount | grep -E "sysroot|loop0| / " | head -6
+echo "=== os-release ==="
+cat /etc/os-release 2>/dev/null | head -4
+echo "=== wifi device ==="
+ip link 2>/dev/null | grep -E "^[0-9]+:" | head -8
+echo "=== dmesg tail ==="
+dmesg | tail -8

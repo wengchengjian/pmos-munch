@@ -18,7 +18,7 @@ deviceinfo_screen_width="1080"
 deviceinfo_screen_height="2400"
 
 # Kernel options
-deviceinfo_dtb="qcom/sm8250-xiaomi-alioth"
+deviceinfo_dtb="qcom/sm8250-xiaomi-munch"
 deviceinfo_append_dtb="true"
 
 # Bootloader related

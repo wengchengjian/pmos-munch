@@ -1,0 +1,15 @@
+echo "=== filesystems ==="
+grep -i fat /proc/filesystems
+echo "=== mount rw ==="
+mkdir -p /run/rootimg-fat
+mount -t vfat -o rw /dev/sda34 /run/rootimg-fat
+echo "rc=$?"
+echo "=== files in mount ==="
+ls -la /run/rootimg-fat | head -8
+echo "=== dmesg fat ==="
+dmesg | grep -iE "fat|vfat|sda34" | tail -25
+echo "=== mount ro msdos ==="
+mount -t msdos -o ro /dev/sda34 /run/rootimg-fat
+echo "rc2=$?"
+echo "=== lsblk ==="
+cat /proc/partitions | grep -E "sda34|major"
