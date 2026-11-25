@@ -16,9 +16,13 @@
 | SSH | ✅ `ssh user@192.168.0.100`（局域网）；USB 网络 `ssh user@172.16.42.1` |
 | 屏幕 | ✅ 物理黑屏（`panel-blank.service` 拉低面板 reset GPIO12） |
 | 电量 | ✅ `/usr/local/bin/battery`（qcom-battery） |
-| 包管理 | ✅ apk 数据库已修复；阿里云 Alpine edge 镜像；已装 200+ 包（bash/coreutils/git/python3/gcc/vim/htop/tmux/rsync…） |
+| 包管理 | ✅ apk 数据库已修复；阿里云 Alpine edge 镜像；已装 300+ 包（bash/coreutils/git/python3/gcc/vim/htop/tmux/rsync…） |
 | 存储 | ✅ userdata 224.8 GiB：1.5 GiB FAT 启动区 + **223 GiB ext4 根分区** |
-| rootfs 空间 | ✅ 218.7 GiB 可用（已用约 0.8 GiB） |
+| rootfs 空间 | ✅ 217 GiB 可用（已用约 1.8 GiB） |
+| 容器 | ✅ Docker **29.10.0** + containerd **2.4.2** + Compose **5.8.0**（overlayfs / cgroup v2） |
+| Node | ✅ Node **26.13.1** + npm **12.2.1**（npmmirror） |
+| 数据库 | ✅ PostgreSQL **17.12**（127.0.0.1:5432）、Redis **8.8.1**（127.0.0.1:6379） |
+| 镜像源 | ✅ apk=阿里云；npm=npmmirror；pip=阿里云；Docker=daocloud/1ms；DNS=223.5.5.5 等 |
 
 **红线（不可违反）**：绝不刷 `dtbo` / `bootloader` / `xbl` / `abl` / `tz` / `modem` / `super`；slot a Android 不可动；唯一允许的数据损失是 `userdata`（已确认接受）。
 
@@ -57,6 +61,40 @@ sda34  224.8 GiB
 pmOS 照旧按 UUID 找根。这样绕开了 FAT32 单文件 4 GiB 的限制，也不需要动分区表；
 旧的 1 GiB `rootfs.img` 保留在 FAT 上作为自动回退。
 
+## 服务与镜像源（2026-11-25）
+
+Alpine 包不带 systemd unit，以下单元都是自建的，源文件在 `units/`：
+
+| 服务 | 版本 | 监听 | 单元 / 配置 |
+|---|---|---|---|
+| Docker | 29.10.0 | `/var/run/docker.sock` | `docker.service` + `containerd.service` + `/etc/docker/daemon.json` |
+| Docker Compose | 5.8.0 | — | `docker compose` |
+| Node.js / npm | 26.13.1 / 12.2.1 | — | 系统包 |
+| PostgreSQL | 17.12 | `127.0.0.1:5432`、`/run/postgresql` | `postgresql.service`（peer + scram） |
+| Redis | 8.8.1 | `127.0.0.1:6379`、`/run/redis/redis.sock` | `redis.service` |
+
+**镜像源（全部持久化）**
+
+| 生态 | 配置位置 | 源 |
+|---|---|---|
+| apk | `/etc/apk/repositories` | `mirrors.aliyun.com/alpine/edge/{main,community,testing}` |
+| npm | `/etc/npmrc`、`/home/user/.npmrc` | `https://registry.npmmirror.com` |
+| pip | `/etc/pip.conf` | `https://mirrors.aliyun.com/pypi/simple/` |
+| Docker | `/etc/docker/daemon.json` | `registry-mirrors: docker.m.daocloud.io, docker.1ms.run`；容器 DNS `223.5.5.5/192.168.0.1/8.8.8.8` |
+| DNS | `/etc/systemd/resolved.conf.d/10-dns.conf` | `192.168.0.1 223.5.5.5 8.8.8.8`（Fallback 1.1.1.1/9.9.9.9） |
+
+`tools/udhcpc-wlan0.script` 只配 IP/路由，**不再重写 `/etc/resolv.conf`**，避免 DHCP 续租把
+systemd-resolved 的 stub 覆盖成路由器那个坏 DNS。
+
+验证命令：
+
+```bash
+docker run --rm hello-world
+npm view express version
+pip3 download --no-deps -d /tmp/pip-test six
+apk update
+```
+
 ## 成果目录
 
 ```
@@ -92,8 +130,8 @@ scripts/
   ops/      WiFi 恢复、apk 修复、MAC 固定等手机侧运维
 
 repo/                         pmaports 包源码（device/firmware/linux-munch，成果）
-units/                        手机侧 systemd 单元（panel-blank、battery）
-tools/                        手机侧脚本与 gpio_hold 源码/二进制
+units/                        手机侧 systemd 单元（panel-blank、battery、docker、containerd、redis、postgresql）
+tools/                        手机侧脚本（gpio_hold、udhcpc-wlan0.script）
 cmds/                         手机侧一次性操作脚本
 edk2/                         UEFI 固件/GRUB arm64 模块（参考，不进 git）
 los-ref/  los-src/             LineageOS 参考镜像与 vendor dts（参考，不进 git）
@@ -168,6 +206,13 @@ bash scripts/deploy/flash-fast.sh
 9. **`losetup` 参数顺序**：`losetup -o OFFSET <loopdev> <file>`（loopdev 在前）；写反会报
    `Invalid argument`。offset 必须 4096 对齐，且分区正在被挂载时也能这样映射。
 10. **扩容后 IP 可能变**：DHCP 请求 `192.168.0.100`，用 `ip -4 addr show wlan0` 确认。
+11. **Alpine 包不带 systemd unit**：Docker/Redis/PostgreSQL 的 unit 都是自建的。这两个服务没有
+    编 `sd_notify`，用 `Type=simple`；Redis 必须加 `RuntimeDirectory=redis`（否则 `/run/redis`
+    不存在，unix socket bind 失败后进程退出），PostgreSQL 同理需要 `RuntimeDirectory=postgresql`。
+12. **Docker 依赖内核模块**：overlay/veth/bridge/br_netfilter/ip_tables/iptable_nat/nf_nat/
+    xt_MASQUERADE/xt_conntrack；unit 的 ExecStartPre 里 `modprobe`，并开 `ip_forward`。
+13. **DNS 不要被 DHCP 覆盖**：用 systemd-resolved 时，udhcpc 脚本里禁止写 `/etc/resolv.conf`；
+    容器 DNS 由 `/etc/docker/daemon.json` 的 `dns` 字段单独指定。
 
 ## 参考
 

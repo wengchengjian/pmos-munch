@@ -1,0 +1,22 @@
+#!/bin/sh
+# munch: configure IPv4 + default route only.
+# DNS is handled by systemd-resolved (/etc/resolv.conf -> stub),
+# so do NOT rewrite /etc/resolv.conf here.
+IF="${interface:-$IFACE}"
+case "$1" in
+	deconfig)
+		ip addr flush dev "$IF" 2>/dev/null
+		;;
+	bound|renew)
+		PREFIX=24
+		case "$mask" in
+			255.255.0.0) PREFIX=16 ;;
+			255.0.0.0) PREFIX=8 ;;
+		esac
+		ip addr flush dev "$IF" 2>/dev/null
+		ip addr add "$ip/$PREFIX" dev "$IF" 2>/dev/null
+		ip route del default 2>/dev/null
+		ip route add default via "$router" dev "$IF" 2>/dev/null
+		;;
+esac
+exit 0

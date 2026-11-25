@@ -16,10 +16,7 @@ case "$1" in
 		esac
 		ip addr replace "$ip/$PREFIX" dev "$IFACE" broadcast "$broadcast"
 		ip route replace default via "$router" dev "$IFACE" metric 50
-		if [ -n "$dns" ]; then
-			: > /etc/resolv.conf 2>/dev/null || true
-			for d in $dns; do echo "nameserver $d" >> /etc/resolv.conf; done
-		fi
+		# DNS: 交给 systemd-resolved，勿改 /etc/resolv.conf
 		;;
 esac
 exit 0

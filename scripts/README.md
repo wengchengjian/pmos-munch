@@ -76,6 +76,27 @@
 | `wsl-backup-after-grow.sh` | 备份新启动 FAT + 当前 rootfs tar.gz |
 | `wsl-verify-net.sh` | 验证 WiFi SSH / 网关 / 外网 |
 
+## services/ — 服务栈与镜像源（2026-11-25 已执行）
+
+| 脚本 | 作用 |
+|---|---|
+| `wsl-check-services.sh` | 查仓库里 node/redis/pg/docker 版本 |
+| `wsl-install-services1.sh` | 安装 Node 26 / npm / Redis 8 / PostgreSQL 17 |
+| `wsl-check-docker.sh` | 检查 kmod/iptables/内核模块/Docker 依赖 |
+| `wsl-install-docker.sh` | 安装 Docker 29 + containerd + compose |
+| `wsl-probe-runtime.sh` | 加载容器模块、检查 iptables/Redis 配置 |
+| `wsl-install-service-units.sh` | 安装 systemd unit、initdb、启动服务 |
+| `wsl-fix-service-units.sh` | Redis/PG 改 `Type=simple` 并重启 |
+| `wsl-fix-redis.sh` | 加 `RuntimeDirectory=redis` 修 unix socket；开 overcommit |
+| `wsl-fix-dns.sh` | 配 systemd-resolved 上游 DNS 并清缓存 |
+| `wsl-fix-dhcp-dns.sh` | 替换 udhcpc 脚本，禁止覆盖 `/etc/resolv.conf` |
+| `wsl-fix-registries.sh` | 写 Docker mirror/DNS、清理 apk 404 源、装 compose |
+| `wsl-test-mirrors.sh` | npm/pip/容器 DNS/apk 镜像验证 |
+| `wsl-test-npm-pip.sh` | npm install + pip download 实测 |
+| `wsl-final-service-check.sh` | 服务、端口、镜像、数据库总检 |
+| `wsl-reboot-verify-services.sh` | 重启后验证全部服务与镜像源 |
+| `wsl-debug-redis.sh` / `wsl-inspect-redis.sh` | Redis 启动失败诊断 |
+
 ## 长尾脚本
 
 早期 7.1/6.19 构建、dtbo/vendor_boot 变体、显示/触摸调查等 212 个一次性脚本已移到

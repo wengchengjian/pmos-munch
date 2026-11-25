@@ -1,0 +1,7 @@
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {"max-size": "10m", "max-file": "3"},
+  "registry-mirrors": ["https://docker.m.daocloud.io", "https://docker.1ms.run"],
+  "dns": ["223.5.5.5", "192.168.0.1", "8.8.8.8"]
+}

@@ -348,3 +348,54 @@ WiFi: 192.168.0.100（DHCP 请求 .100 成功；此前是 .103）
 panel-blank / wpa_supplicant-wlan0 / wlan0-dhcp / sshd 全部 active；仅 getty@tty1 和
 serial-getty 失败（无 VT/串口，预期）。脚本：`scripts/ops/wsl-apk-tools1.sh`、
 `wsl-apk-tools2.sh`、`wsl-verify-tools.sh`。
+
+---
+
+## 2026-11-25 夜：服务栈 + 镜像源全部打通 ✅
+
+### 已安装
+
+| 组件 | 版本 | 监听 | 备注 |
+|---|---|---|---|
+| Docker | 29.10.0 | /var/run/docker.sock | overlayfs + cgroup v2，hello-world/alpine 拉取成功 |
+| containerd | 2.4.2 | — | docker.service Requires |
+| Docker Compose | 5.8.0 | — | `docker compose` |
+| Node.js / npm | 26.13.1 / 12.2.1 | — | npmmirror 实测 3s 装 lodash |
+| PostgreSQL | 17.12 | 127.0.0.1:5432 | initdb（peer + scram），库/用户未建 |
+| Redis | 8.8.1 | 127.0.0.1:6379 + /run/redis/redis.sock | protected-mode yes |
+
+unit 都在 `units/`，安装到 `/etc/systemd/system/`：`docker.service`、`containerd.service`、
+`redis.service`、`postgresql.service`。全部 enabled，重启后自动恢复。
+
+### 镜像源（已实测）
+
+- **apk**：`/etc/apk/repositories` = 阿里云 Alpine edge main/community/testing；删掉了 404 的
+  `mirrors.aliyun.com/postmarketOS/main`。`apk update` 35619 包。
+- **npm**：`/etc/npmrc` + `/home/user/.npmrc` = `https://registry.npmmirror.com`；
+  `npm view express version` → 5.3.0，`npm install lodash` 3s。
+- **pip**：`/etc/pip.conf` = `https://mirrors.aliyun.com/pypi/simple/`（trusted-host 阿里云）；
+  `pip3 download six` 成功。
+- **Docker**：`/etc/docker/daemon.json` registry-mirrors = `docker.m.daocloud.io` / `docker.1ms.run`；
+  容器 DNS = 223.5.5.5/192.168.0.1/8.8.8.8；`docker run --rm hello-world` 与 `alpine` 均成功。
+- **DNS**：`/etc/systemd/resolved.conf.d/10-dns.conf` = 192.168.0.1/223.5.5.5/8.8.8.8，
+  Fallback 1.1.1.1/9.9.9.9。之前 `/etc/resolv.conf` 指向 systemd-resolved stub，但 upstream 是
+  9.9.9.10（不可达），导致 npm/docker/apk 全部 DNS 超时。
+
+### 关键坑
+
+1. **Alpine 包没有 systemd unit**，必须自建。Redis/PostgreSQL 未编 sd_notify，用 `Type=simple`。
+2. **Redis** 配置启用了 `unixsocket /run/redis/redis.sock`，但 `/run` 是 tmpfs，重启后目录不存在 →
+   Redis 退出。修法：unit 加 `RuntimeDirectory=redis` / `RuntimeDirectoryMode=0770`。
+   PostgreSQL 同理加 `RuntimeDirectory=postgresql`。
+3. **Docker** 需要 unit 里 `modprobe overlay veth bridge br_netfilter ip_tables iptable_nat nf_nat
+   xt_MASQUERADE xt_conntrack`，并 `sysctl net.ipv4.ip_forward=1`。内核 config 已具备（7.2.0）。
+4. **DHCP 会覆盖 DNS**：`/usr/local/bin/udhcpc-wlan0.script` 原来会 `: > /etc/resolv.conf` 写入
+   路由器下发的 192.168.1.1（坏的）。已改成只配 IP/路由；systemd-resolved 负责 DNS。
+   文件版本存 `tools/udhcpc-wlan0.script`。
+5. 容器镜像走 mirror 时 `/v2/` 返回 401 是正常的（需要 token），能拉取即 OK。
+
+### 验证
+
+重启后：containerd/docker/redis/postgresql/sshd/panel-blank/wpa_supplicant-wlan0/wlan0-dhcp/
+systemd-resolved 全部 active；`docker run --rm hello-world`、`npm view express version`、
+`pip3 download six`、`apk update` 全部通过。rootfs 用量 1.8G/219G。

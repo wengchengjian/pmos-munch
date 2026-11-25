@@ -31,10 +31,7 @@ case "$1" in
 		ip addr add "$ip/$PREFIX" dev "$IF" 2>/dev/null
 		ip route del default 2>/dev/null
 		ip route add default via "$router" dev "$IF" 2>/dev/null
-		if [ -n "$dns" ]; then
-			: > /etc/resolv.conf 2>/dev/null
-			for d in $dns; do echo "nameserver $d" >> /etc/resolv.conf; done
-		fi
+		# DNS: 交给 systemd-resolved，勿改 /etc/resolv.conf
 		;;
 esac
 exit 0
