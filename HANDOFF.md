@@ -325,6 +325,7 @@ WiFi: 192.168.0.100（DHCP 请求 .100 成功；此前是 .103）
 
 - **不要再用 `flash-fast.sh` 刷旧的 `out/pmos-fat-userdata.img`**：那会把 userdata 截回
   1.5GiB 旧布局，大 ext4 虽然物理还在但启动 hook 会找不到/被覆盖。
+  （`flash-fast.sh` 已改为刷 `out/pmos-fat-userdata-grow.img`，只覆盖前 1.5GiB。）
 - 恢复顺序：优先 `out/pmos-fat-userdata-grow.img`；若必须整包重刷，刷完后要重做扩容
   （`scripts/ops/wsl-grow-rootfs.sh` + `scripts/build/wsl-build-grow-initramfs.sh`）。
 - 大 ext4 不是分区，GPT 里仍是 sda34；换系统/重刷 userdata 会丢，需要重新迁移。

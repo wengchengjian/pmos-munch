@@ -137,8 +137,8 @@ sudo bash scripts/build/wsl-build-grow-initramfs.sh
 # 替换后重启；hook 失败会自动回退到旧 rootfs.img
 ```
 
-扩容后不要再用 `flash-fast.sh` 刷 `out/pmos-fat-userdata.img`（那会把 userdata 截回 1.5GiB
-的旧布局）；恢复请用 `out/pmos-fat-userdata-grow.img` 或直接刷整个 userdata 后重做扩容。
+扩容后 `flash-fast.sh` 已改为刷 `out/pmos-fat-userdata-grow.img`（只覆盖前 1.5 GiB 启动 FAT，
+不会碰后面的 223 GiB ext4）。不要手工去刷旧的 `out/pmos-fat-userdata.img`。
 
 刷机（手机进 fastboot，**先确认 current-slot=a**）：
 

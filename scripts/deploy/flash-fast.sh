@@ -25,7 +25,10 @@ echo "OK fastboot (t=$(el))"
 
 if [ "$MODE" != "skipflash" ]; then
 	echo "[2/4] FLASH userdata (max 180s)"
-	if ! timeout 180 "$FB" flash userdata out/pmos-fat-userdata.img 2>&1 | tail -2; then
+	# 2026-11-25 扩容后：只刷前 1.5GiB 启动 FAT，保留偏移 1536MiB 的 223GiB ext4
+	IMG=out/pmos-fat-userdata-grow.img
+	[ -f "$IMG" ] || { echo "FAILED(stage=flash): $IMG missing"; exit 13; }
+	if ! timeout 180 "$FB" flash userdata "$IMG" 2>&1 | tail -2; then
 		echo "FAILED(stage=flash): flash error/timeout"
 		exit 11
 	fi
